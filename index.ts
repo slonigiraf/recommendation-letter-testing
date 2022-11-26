@@ -42,6 +42,7 @@ async function main() {
     const refereeSignatureHex = u8aToHex(refereeSignatureU8);
     const dataToSignByWorker = getDataToSignByWorker(letterID, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
     const workerSignatureU8 = sign(worker, u8aWrapBytes(dataToSignByWorker));
+    const wrongWorkerSignatureU8 = sign(malicious, u8aWrapBytes(dataToSignByWorker));
     const workerSignatureHex = u8aToHex(workerSignatureU8);
     
 
@@ -191,11 +192,41 @@ async function main() {
     }
     `;
 
+
+    const wrong_worker_sign = `
+    
+    #[test]
+    fn wrong_worker_sign() {
+        new_test_ext().execute_with(|| {
+            let referee_hash = H256::from(REFEREE_ID);
+    
+            let referee_signature: [u8; 64] = [${refereeSignatureU8}];
+            let worker_signature: [u8; 64] = [${wrongWorkerSignatureU8}];
+            
+            assert_noop!(
+                LettersModule::reimburse(
+                    Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                    LETTER_ID,
+                    // LAST_VALID_BLOCK_NUMBER,
+                    H256::from(REFEREE_ID),
+                    H256::from(WORKER_ID),
+                    H256::from(EMPLOYER_ID),
+                    REFEREE_STAKE,
+                    H512::from(referee_signature),
+                    H512::from(worker_signature)
+                ),
+                Error::<Test>::InvalidWorkerSign
+            );
+        });
+    }
+    `;
+
     // console.log(signature_is_valid);
     // console.log(common);
     // console.log(successful_reimburce);
     // console.log(wrong_referee_sign);
-    console.log(referee_has_not_enough_balance);
+    // console.log(referee_has_not_enough_balance);
+    console.log(wrong_worker_sign);
     
 }
 
