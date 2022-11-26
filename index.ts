@@ -158,11 +158,44 @@ async function main() {
     }
     `;
 
+    const referee_has_not_enough_balance = `
+    
+    #[test]
+    fn referee_has_not_enough_balance() {
+        new_test_ext().execute_with(|| {
+            let referee_hash = H256::from(REFEREE_ID);
+    
+            let referee_signature: [u8; 64] = [${refereeSignatureU8}];
+            let worker_signature: [u8; 64] = [${workerSignatureU8}];
+            
+            Balances::make_free_balance_be(
+                &AccountId::from(Public::from_raw(REFEREE_ID)).into_account(),
+                9,
+            );
+
+            assert_noop!(
+                LettersModule::reimburse(
+                    Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                    LETTER_ID,
+                    // LAST_VALID_BLOCK_NUMBER,
+                    H256::from(REFEREE_ID),
+                    H256::from(WORKER_ID),
+                    H256::from(EMPLOYER_ID),
+                    REFEREE_STAKE,
+                    H512::from(referee_signature),
+                    H512::from(worker_signature)
+                ),
+                Error::<Test>::RefereeBalanceIsNotEnough
+            );
+        });
+    }
+    `;
+
     // console.log(signature_is_valid);
     // console.log(common);
     // console.log(successful_reimburce);
-    console.log(wrong_referee_sign);
-
+    // console.log(wrong_referee_sign);
+    console.log(referee_has_not_enough_balance);
     
 }
 
