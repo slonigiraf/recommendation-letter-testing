@@ -16,45 +16,46 @@ function printEndInfo(methodName: string){
 async function main() {
     await cryptoWaitReady();
 
-    const insurance_id = 0;
-    const amount = 1000000000000000;
-    // console.log("insurance_id: ", insurance_id);
-    // console.log("amount: ", amount);
-
     const keyring = new Keyring({ type: 'sr25519' });
     const referee = keyring.addFromUri('//Alice');
     const worker = keyring.addFromUri('//Bob');
     const employer = keyring.addFromUri('//Bob//stash');
+    const malicious = keyring.addFromUri('//Malicious');
+    const initialBalance = 1000;
+    const refereeStake = 10;
+    const letterID = 1;
+    const lastValidBlockNumber = 100;
+    const beforeLastValidBlockNumber = lastValidBlockNumber - 1;
+    const afterLastValidBlockNumber = lastValidBlockNumber + 1;
+    
 
     const refereeU8 = referee.publicKey;
     const refereeHex = u8aToHex(referee.publicKey);
-    // console.log("refereeU8: ", refereeU8);
-    // console.log("refereeHex: ", refereeHex);
-
     const workerU8 = worker.publicKey;
     const workerHex = u8aToHex(worker.publicKey);
-    // console.log("workerU8: ", workerU8);
-    // console.log("workerHex: ", workerHex);
-
     const employerU8 = employer.publicKey;
     const employerHex = u8aToHex(employer.publicKey);
-    // console.log("employerU8: ", employerU8);
-    // console.log("employerHex: ", employerHex);
-
-    const dataToBeSignedByReferee = getPublicDataToSignByReferee(insurance_id, refereeU8, workerU8, amount);
-    // console.log("dataToBeSignedByReferee: ", dataToBeSignedByReferee);
-
+    const dataToBeSignedByReferee = getPublicDataToSignByReferee(letterID, refereeU8, workerU8, refereeStake);
     const refereeSignatureU8 = sign(referee, u8aWrapBytes(dataToBeSignedByReferee));
     const refereeSignatureHex = u8aToHex(refereeSignatureU8);
-    // console.log("refereeSignatureU8: ", refereeSignatureU8);
-    // console.log("refereeSignatureHex: ", refereeSignatureHex);
-    const dataToSignByWorker = getDataToSignByWorker(insurance_id, refereeU8, workerU8, amount, refereeSignatureU8, employerU8);
+    const dataToSignByWorker = getDataToSignByWorker(letterID, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
     const workerSignatureU8 = sign(worker, u8aWrapBytes(dataToSignByWorker));
     const workerSignatureHex = u8aToHex(workerSignatureU8);
-    // console.log("workerSignatureU8: ", workerSignatureU8);
-    // console.log("workerSignatureHex: ", workerSignatureHex);
-
     
+
+    const common = `
+    pub const REFEREE_ID: [u8; 32] = [${referee.publicKey}];
+    pub const WORKER_ID: [u8; 32] = [${worker.publicKey}];
+    pub const EMPLOYER_ID: [u8; 32] = [${employer.publicKey}];
+    pub const MALICIOUS_ID: [u8; 32] = [${malicious.publicKey}];
+    pub const INITIAL_BALANCE: u64 = ${initialBalance};
+    pub const REFEREE_STAKE: u64 = ${refereeStake};
+    pub const LETTER_ID: u32 = ${letterID};
+    pub const BEFORE_VALID_BLOCK_NUMBER: u64 = ${beforeLastValidBlockNumber};
+    pub const LAST_VALID_BLOCK_NUMBER: u64 = ${lastValidBlockNumber};
+    pub const AFTER_VALID_BLOCK_NUMBER: u64 = ${afterLastValidBlockNumber};
+    `;
+
     const signature_is_valid = `
 
     #[test]
@@ -75,9 +76,61 @@ async function main() {
             );
         });
     }
-    `
+    `;
 
-    console.log(signature_is_valid);
+    const successful_reimburce = `
+    
+    #[test]
+    fn successful_reimburce() {
+        new_test_ext().execute_with(|| {
+            let referee_hash = H256::from(REFEREE_ID);
+    
+            let referee_signature: [u8; 64] = [${refereeSignatureU8}];
+            let worker_signature: [u8; 64] = [${workerSignatureU8}];
+            
+            assert_eq!(
+                LettersModule::was_letter_canceled(referee_hash.clone(), LETTER_ID as usize),
+                false
+            );
+    
+            assert_ok!(LettersModule::reimburse(
+                Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                LETTER_ID,
+                // LAST_VALID_BLOCK_NUMBER,
+                H256::from(REFEREE_ID),
+                H256::from(WORKER_ID),
+                H256::from(EMPLOYER_ID),
+                REFEREE_STAKE,
+                H512::from(referee_signature),
+                H512::from(worker_signature)
+            ));
+    
+            assert_eq!(
+                LettersModule::was_letter_canceled(referee_hash.clone(), LETTER_ID as usize),
+                true
+            );
+    
+            assert_noop!(
+                LettersModule::reimburse(
+                    Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                    LETTER_ID,
+                    // LAST_VALID_BLOCK_NUMBER,
+                    H256::from(REFEREE_ID),
+                    H256::from(WORKER_ID),
+                    H256::from(EMPLOYER_ID),
+                    REFEREE_STAKE,
+                    H512::from(referee_signature),
+                    H512::from(worker_signature)
+                ),
+                Error::<Test>::LetterWasMarkedAsFraudBefore
+            );
+        });
+    }
+    `;
+
+    // console.log(signature_is_valid);
+    // console.log(common);
+    console.log(successful_reimburce);
     
 }
 
