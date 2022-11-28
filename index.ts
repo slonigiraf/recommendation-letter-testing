@@ -24,13 +24,13 @@ async function main() {
     const refereeU8 = referee.publicKey;
     const workerU8 = worker.publicKey;
     const employerU8 = employer.publicKey;
-    const dataToBeSignedByReferee = getPublicDataToSignByReferee(letterID, refereeU8, workerU8, refereeStake);
+    const dataToBeSignedByReferee = getPublicDataToSignByReferee(letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake);
     const refereeSignatureU8 = sign(referee, u8aWrapBytes(dataToBeSignedByReferee));
     const wrongRefereeSignatureU8 = sign(malicious, u8aWrapBytes(dataToBeSignedByReferee));
-    const dataToSignByWorker = getDataToSignByWorker(letterID, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
+    const dataToSignByWorker = getDataToSignByWorker(letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
     const workerSignatureU8 = sign(worker, u8aWrapBytes(dataToSignByWorker));
     const wrongWorkerSignatureU8 = sign(malicious, u8aWrapBytes(dataToSignByWorker));
-    
+
     const common = `
 pub const REFEREE_ID: [u8; 32] = [${referee.publicKey}];
 pub const WORKER_ID: [u8; 32] = [${worker.publicKey}];
@@ -82,7 +82,7 @@ fn successful_reimburce() {
         assert_ok!(LettersModule::reimburse(
             Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
             LETTER_ID,
-            // LAST_VALID_BLOCK_NUMBER,
+            LAST_VALID_BLOCK_NUMBER,
             H256::from(REFEREE_ID),
             H256::from(WORKER_ID),
             H256::from(EMPLOYER_ID),
@@ -100,7 +100,7 @@ fn successful_reimburce() {
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
                 LETTER_ID,
-                // LAST_VALID_BLOCK_NUMBER,
+                LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
                 H256::from(WORKER_ID),
                 H256::from(EMPLOYER_ID),
@@ -127,7 +127,7 @@ fn wrong_referee_sign() {
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
                 LETTER_ID,
-                // LAST_VALID_BLOCK_NUMBER,
+                LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
                 H256::from(WORKER_ID),
                 H256::from(EMPLOYER_ID),
@@ -159,7 +159,7 @@ fn referee_has_not_enough_balance() {
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
                 LETTER_ID,
-                // LAST_VALID_BLOCK_NUMBER,
+                LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
                 H256::from(WORKER_ID),
                 H256::from(EMPLOYER_ID),
@@ -187,7 +187,7 @@ fn wrong_worker_sign() {
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
                 LETTER_ID,
-                // LAST_VALID_BLOCK_NUMBER,
+                LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
                 H256::from(WORKER_ID),
                 H256::from(EMPLOYER_ID),
@@ -214,7 +214,7 @@ fn expired() {
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
                 LETTER_ID,
-                // LAST_VALID_BLOCK_NUMBER,
+                LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
                 H256::from(WORKER_ID),
                 H256::from(EMPLOYER_ID),
