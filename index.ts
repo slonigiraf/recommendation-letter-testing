@@ -18,7 +18,6 @@ async function main() {
     const refereeStake = 10;
     const letterID = 1;
     const lastValidBlockNumber = 100;
-    const beforeLastValidBlockNumber = lastValidBlockNumber - 1;
     const afterLastValidBlockNumber = lastValidBlockNumber + 1;
 
     
@@ -50,7 +49,6 @@ pub const MALICIOUS_ID: [u8; 32] = [${malicious.publicKey}];
 pub const INITIAL_BALANCE: u64 = ${initialBalance};
 pub const REFEREE_STAKE: u64 = ${refereeStake};
 pub const LETTER_ID: u32 = ${letterID};
-pub const BEFORE_VALID_BLOCK_NUMBER: u64 = ${beforeLastValidBlockNumber};
 pub const LAST_VALID_BLOCK_NUMBER: u64 = ${lastValidBlockNumber};
 pub const AFTER_VALID_BLOCK_NUMBER: u64 = ${afterLastValidBlockNumber};
 `;
@@ -128,8 +126,6 @@ fn successful_reimburse() {
 #[test]
 fn wrong_referee_sign() {
     new_test_ext().execute_with(|| {
-        let referee_hash = H256::from(REFEREE_ID);
-
         let referee_signature: [u8; 64] = [${wrongRefereeSignatureU8}];
         let worker_signature: [u8; 64] = [${workerSignatureU8}];
         frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
@@ -155,8 +151,6 @@ fn wrong_referee_sign() {
 #[test]
 fn referee_has_not_enough_balance() {
     new_test_ext().execute_with(|| {
-        let referee_hash = H256::from(REFEREE_ID);
-
         let referee_signature: [u8; 64] = [${refereeSignatureU8}];
         let worker_signature: [u8; 64] = [${workerSignatureU8}];
         frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
@@ -188,8 +182,6 @@ fn referee_has_not_enough_balance() {
 #[test]
 fn wrong_worker_sign() {
     new_test_ext().execute_with(|| {
-        let referee_hash = H256::from(REFEREE_ID);
-
         let referee_signature: [u8; 64] = [${refereeSignatureU8}];
         let worker_signature: [u8; 64] = [${wrongWorkerSignatureU8}];
         frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
@@ -242,8 +234,6 @@ const wrong_genesis = `
 #[test]
 fn wrong_genesis() {
     new_test_ext().execute_with(|| {
-        let referee_hash = H256::from(REFEREE_ID);
-
         let referee_signature: [u8; 64] = [${wrongGenesisRefereeSignatureU8}];
         let worker_signature: [u8; 64] = [${wrongGenesisWorkerSignatureU8}];
         frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
