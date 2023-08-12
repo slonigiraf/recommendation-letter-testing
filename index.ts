@@ -2,7 +2,7 @@
 // For using in recommendation-letters pallet
 import { Keyring } from '@polkadot/keyring';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
-import { u8aToHex, u8aWrapBytes } from '@polkadot/util';
+import { u8aWrapBytes, hexToU8a } from '@polkadot/util';
 import { sign, getPublicDataToSignByReferee, getDataToSignByWorker } from '@slonigiraf/helpers';
 import { promises as fsPromises } from 'fs';
 
@@ -17,20 +17,30 @@ async function main() {
     const initialBalance = 1000;
     const refereeStake = 10;
     const letterID = 1;
-    const paraID = 1;
     const lastValidBlockNumber = 100;
     const beforeLastValidBlockNumber = lastValidBlockNumber - 1;
     const afterLastValidBlockNumber = lastValidBlockNumber + 1;
 
+    
     const refereeU8 = referee.publicKey;
     const workerU8 = worker.publicKey;
     const employerU8 = employer.publicKey;
-    const dataToBeSignedByReferee = getPublicDataToSignByReferee(paraID, letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake);
+    //---- Good genesis
+    const genesisU8 = hexToU8a("0x4545454545454545454545454545454545454545454545454545454545454545");
+    const dataToBeSignedByReferee = getPublicDataToSignByReferee(genesisU8, letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake);
     const refereeSignatureU8 = sign(referee, u8aWrapBytes(dataToBeSignedByReferee));
     const wrongRefereeSignatureU8 = sign(malicious, u8aWrapBytes(dataToBeSignedByReferee));
-    const dataToSignByWorker = getDataToSignByWorker(paraID, letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
+    const dataToSignByWorker = getDataToSignByWorker(letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
     const workerSignatureU8 = sign(worker, u8aWrapBytes(dataToSignByWorker));
     const wrongWorkerSignatureU8 = sign(malicious, u8aWrapBytes(dataToSignByWorker));
+
+    //---- Wrong genesis
+    const wrongGenesisU8 = hexToU8a("0x0545454545454545454545454545454545454545454545454545454545454545");
+    const wrongGenesisDataToBeSignedByReferee = getPublicDataToSignByReferee(wrongGenesisU8, letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake);
+    const wrongGenesisRefereeSignatureU8 = sign(referee, u8aWrapBytes(wrongGenesisDataToBeSignedByReferee));
+    const wrongGenesisDataToSignByWorker = getDataToSignByWorker(letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake, wrongGenesisRefereeSignatureU8, employerU8);
+    const wrongGenesisWorkerSignatureU8 = sign(worker, u8aWrapBytes(wrongGenesisDataToSignByWorker));
+   
 
     const common = `
 pub const REFEREE_ID: [u8; 32] = [${referee.publicKey}];
@@ -39,7 +49,6 @@ pub const EMPLOYER_ID: [u8; 32] = [${employer.publicKey}];
 pub const MALICIOUS_ID: [u8; 32] = [${malicious.publicKey}];
 pub const INITIAL_BALANCE: u64 = ${initialBalance};
 pub const REFEREE_STAKE: u64 = ${refereeStake};
-pub const PARA_ID: u32 = ${paraID};
 pub const LETTER_ID: u32 = ${letterID};
 pub const BEFORE_VALID_BLOCK_NUMBER: u64 = ${beforeLastValidBlockNumber};
 pub const LAST_VALID_BLOCK_NUMBER: u64 = ${lastValidBlockNumber};
@@ -83,7 +92,6 @@ fn successful_reimburse() {
 
         assert_ok!(LettersModule::reimburse(
             Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-            PARA_ID,
             LETTER_ID,
             LAST_VALID_BLOCK_NUMBER,
             H256::from(REFEREE_ID),
@@ -102,7 +110,6 @@ fn successful_reimburse() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -130,7 +137,6 @@ fn wrong_referee_sign() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -163,7 +169,6 @@ fn referee_has_not_enough_balance() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -192,7 +197,6 @@ fn wrong_worker_sign() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -220,7 +224,6 @@ fn expired() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -235,20 +238,19 @@ fn expired() {
     });
 }`;
 
-const wrong_para_id = `
+const wrong_genesis = `
 #[test]
-fn wrong_para_id() {
+fn wrong_genesis() {
     new_test_ext().execute_with(|| {
         let referee_hash = H256::from(REFEREE_ID);
 
-        let referee_signature: [u8; 64] = [${refereeSignatureU8}];
-        let worker_signature: [u8; 64] = [${workerSignatureU8}];
+        let referee_signature: [u8; 64] = [${wrongGenesisRefereeSignatureU8}];
+        let worker_signature: [u8; 64] = [${wrongGenesisWorkerSignatureU8}];
         frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
         
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
-                ${paraID+1},
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -258,7 +260,7 @@ fn wrong_para_id() {
                 H512::from(referee_signature),
                 H512::from(worker_signature)
             ),
-            Error::<Test>::WrongParaId
+            Error::<Test>::InvalidRefereeSign
         );
     });
 }`;
@@ -357,7 +359,6 @@ parameter_types! {
 parameter_types! {
 	pub const DefaultDifficulty: u32 = 3;
 	pub const LettersPerChunk: u32 = 1000;
-    pub const TheParaId: u32 = ${paraID};
 }
 
 impl Config for Test {
@@ -367,7 +368,6 @@ impl Config for Test {
 	type WeightInfo = ();
 	type DefaultDifficulty = DefaultDifficulty;
 	type LettersPerChunk = LettersPerChunk;
-    type TheParaId = TheParaId;
 }
 
 ${common}
@@ -516,7 +516,7 @@ fn mark_letter_as_fraud() {
 
 ${signature_is_valid}
 ${expired}
-${wrong_para_id}
+${wrong_genesis}
 ${successful_reimburse}
 ${wrong_referee_sign}
 ${referee_has_not_enough_balance}
