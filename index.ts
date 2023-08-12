@@ -17,6 +17,7 @@ async function main() {
     const initialBalance = 1000;
     const refereeStake = 10;
     const letterID = 1;
+    const paraID = 1;
     const lastValidBlockNumber = 100;
     const beforeLastValidBlockNumber = lastValidBlockNumber - 1;
     const afterLastValidBlockNumber = lastValidBlockNumber + 1;
@@ -24,10 +25,10 @@ async function main() {
     const refereeU8 = referee.publicKey;
     const workerU8 = worker.publicKey;
     const employerU8 = employer.publicKey;
-    const dataToBeSignedByReferee = getPublicDataToSignByReferee(letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake);
+    const dataToBeSignedByReferee = getPublicDataToSignByReferee(paraID, letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake);
     const refereeSignatureU8 = sign(referee, u8aWrapBytes(dataToBeSignedByReferee));
     const wrongRefereeSignatureU8 = sign(malicious, u8aWrapBytes(dataToBeSignedByReferee));
-    const dataToSignByWorker = getDataToSignByWorker(letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
+    const dataToSignByWorker = getDataToSignByWorker(paraID, letterID, lastValidBlockNumber, refereeU8, workerU8, refereeStake, refereeSignatureU8, employerU8);
     const workerSignatureU8 = sign(worker, u8aWrapBytes(dataToSignByWorker));
     const wrongWorkerSignatureU8 = sign(malicious, u8aWrapBytes(dataToSignByWorker));
 
@@ -38,6 +39,7 @@ pub const EMPLOYER_ID: [u8; 32] = [${employer.publicKey}];
 pub const MALICIOUS_ID: [u8; 32] = [${malicious.publicKey}];
 pub const INITIAL_BALANCE: u64 = ${initialBalance};
 pub const REFEREE_STAKE: u64 = ${refereeStake};
+pub const PARA_ID: u32 = ${paraID};
 pub const LETTER_ID: u32 = ${letterID};
 pub const BEFORE_VALID_BLOCK_NUMBER: u64 = ${beforeLastValidBlockNumber};
 pub const LAST_VALID_BLOCK_NUMBER: u64 = ${lastValidBlockNumber};
@@ -64,9 +66,9 @@ fn signature_is_valid() {
     });
 }`;
 
-    const successful_reimburce = `
+    const successful_reimburse = `
 #[test]
-fn successful_reimburce() {
+fn successful_reimburse() {
     new_test_ext().execute_with(|| {
         let referee_hash = H256::from(REFEREE_ID);
 
@@ -81,6 +83,7 @@ fn successful_reimburce() {
 
         assert_ok!(LettersModule::reimburse(
             Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+            PARA_ID,
             LETTER_ID,
             LAST_VALID_BLOCK_NUMBER,
             H256::from(REFEREE_ID),
@@ -99,6 +102,7 @@ fn successful_reimburce() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -126,6 +130,7 @@ fn wrong_referee_sign() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -158,6 +163,7 @@ fn referee_has_not_enough_balance() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -186,6 +192,7 @@ fn wrong_worker_sign() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -213,6 +220,7 @@ fn expired() {
         assert_noop!(
             LettersModule::reimburse(
                 Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                PARA_ID,
                 LETTER_ID,
                 LAST_VALID_BLOCK_NUMBER,
                 H256::from(REFEREE_ID),
@@ -223,6 +231,34 @@ fn expired() {
                 H512::from(worker_signature)
             ),
             Error::<Test>::Expired
+        );
+    });
+}`;
+
+const wrong_para_id = `
+#[test]
+fn wrong_para_id() {
+    new_test_ext().execute_with(|| {
+        let referee_hash = H256::from(REFEREE_ID);
+
+        let referee_signature: [u8; 64] = [${refereeSignatureU8}];
+        let worker_signature: [u8; 64] = [${workerSignatureU8}];
+        frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
+        
+        assert_noop!(
+            LettersModule::reimburse(
+                Origin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                ${paraID+1},
+                LETTER_ID,
+                LAST_VALID_BLOCK_NUMBER,
+                H256::from(REFEREE_ID),
+                H256::from(WORKER_ID),
+                H256::from(EMPLOYER_ID),
+                REFEREE_STAKE,
+                H512::from(referee_signature),
+                H512::from(worker_signature)
+            ),
+            Error::<Test>::WrongParaId
         );
     });
 }`;
@@ -321,6 +357,7 @@ parameter_types! {
 parameter_types! {
 	pub const DefaultDifficulty: u32 = 3;
 	pub const LettersPerChunk: u32 = 1000;
+    pub const TheParaId: u32 = ${paraID};
 }
 
 impl Config for Test {
@@ -330,9 +367,8 @@ impl Config for Test {
 	type WeightInfo = ();
 	type DefaultDifficulty = DefaultDifficulty;
 	type LettersPerChunk = LettersPerChunk;
+    type TheParaId = TheParaId;
 }
-
-use hex_literal::hex;
 
 ${common}
 
@@ -480,7 +516,8 @@ fn mark_letter_as_fraud() {
 
 ${signature_is_valid}
 ${expired}
-${successful_reimburce}
+${wrong_para_id}
+${successful_reimburse}
 ${wrong_referee_sign}
 ${referee_has_not_enough_balance}
 ${wrong_worker_sign}
@@ -488,7 +525,7 @@ ${wrong_worker_sign}
 
     // console.log(signature_is_valid);
     // console.log(common);
-    // console.log(successful_reimburce);
+    // console.log(successful_reimburse);
     // console.log(wrong_referee_sign);
     // console.log(referee_has_not_enough_balance);
     // console.log(wrong_worker_sign);
