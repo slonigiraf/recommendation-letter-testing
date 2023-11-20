@@ -215,8 +215,6 @@ fn wrong_worker_sign() {
 #[test]
 fn expired() {
     new_test_ext().execute_with(|| {
-        let referee_hash = H256::from(REFEREE_ID);
-
         let referee_signature: [u8; 64] = [${refereeSignatureU8}];
         let worker_signature: [u8; 64] = [${workerSignatureU8}];
         frame_system::Pallet::<Test>::set_block_number(AFTER_VALID_BLOCK_NUMBER);
