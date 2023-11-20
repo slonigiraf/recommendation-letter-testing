@@ -211,6 +211,32 @@ fn wrong_worker_sign() {
     });
 }`;
 
+const notAllowed = `
+#[test]
+fn not_allowed_block() {
+    new_test_ext().execute_with(|| {
+        let referee_signature: [u8; 64] = [${refereeSignatureU8}];
+        let worker_signature: [u8; 64] = [${workerSignatureU8}];
+        frame_system::Pallet::<Test>::set_block_number(AFTER_LAST_BLOCK_ALLOWED);
+        
+        assert_noop!(
+            LettersModule::reimburse(
+                RuntimeOrigin::signed(AccountId::from(Public::from_raw(REFEREE_ID)).into_account()),
+                LETTER_ID,
+                LAST_VALID_BLOCK_NUMBER,
+                LAST_BLOCK_ALLOWED,
+                H256::from(REFEREE_ID),
+                H256::from(WORKER_ID),
+                H256::from(EMPLOYER_ID),
+                REFEREE_STAKE,
+                H512::from(referee_signature),
+                H512::from(worker_signature)
+            ),
+            Error::<Test>::NotAllowedBlock
+        );
+    });
+}`;
+
     const expired = `
 #[test]
 fn expired() {
@@ -496,6 +522,7 @@ fn mark_letter_as_fraud() {
 }
 
 ${signature_is_valid}
+${notAllowed}
 ${expired}
 ${wrong_genesis}
 ${successful_reimburse}
