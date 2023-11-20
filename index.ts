@@ -84,7 +84,7 @@ fn successful_reimburse() {
 
         let referee_signature: [u8; 64] = [${refereeSignatureU8}];
         let worker_signature: [u8; 64] = [${workerSignatureU8}];
-        frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
+        frame_system::Pallet::<Test>::set_block_number(LAST_BLOCK_ALLOWED);
         
         assert_eq!(
             LettersModule::was_letter_canceled(referee_hash.clone(), LETTER_ID as usize),
@@ -133,7 +133,7 @@ fn wrong_referee_sign() {
     new_test_ext().execute_with(|| {
         let referee_signature: [u8; 64] = [${wrongRefereeSignatureU8}];
         let worker_signature: [u8; 64] = [${workerSignatureU8}];
-        frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
+        frame_system::Pallet::<Test>::set_block_number(LAST_BLOCK_ALLOWED);
 
         assert_noop!(
             LettersModule::reimburse(
@@ -159,7 +159,7 @@ fn referee_has_not_enough_balance() {
     new_test_ext().execute_with(|| {
         let referee_signature: [u8; 64] = [${refereeSignatureU8}];
         let worker_signature: [u8; 64] = [${workerSignatureU8}];
-        frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
+        frame_system::Pallet::<Test>::set_block_number(LAST_BLOCK_ALLOWED);
 
         Balances::make_free_balance_be(
             &AccountId::from(Public::from_raw(REFEREE_ID)).into_account(),
@@ -191,7 +191,7 @@ fn wrong_worker_sign() {
     new_test_ext().execute_with(|| {
         let referee_signature: [u8; 64] = [${refereeSignatureU8}];
         let worker_signature: [u8; 64] = [${wrongWorkerSignatureU8}];
-        frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
+        frame_system::Pallet::<Test>::set_block_number(LAST_BLOCK_ALLOWED);
 
         assert_noop!(
             LettersModule::reimburse(
@@ -243,7 +243,7 @@ fn wrong_genesis() {
     new_test_ext().execute_with(|| {
         let referee_signature: [u8; 64] = [${wrongGenesisRefereeSignatureU8}];
         let worker_signature: [u8; 64] = [${wrongGenesisWorkerSignatureU8}];
-        frame_system::Pallet::<Test>::set_block_number(LAST_VALID_BLOCK_NUMBER);
+        frame_system::Pallet::<Test>::set_block_number(LAST_BLOCK_ALLOWED);
         
         assert_noop!(
             LettersModule::reimburse(
